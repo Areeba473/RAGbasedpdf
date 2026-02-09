@@ -10,14 +10,13 @@ from sentence_transformers import SentenceTransformer
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise ValueError("❌ GROQ_API_KEY not found. Add it to environment variables.")
+    raise ValueError("❌ GROQ_API_KEY not found. Add it in environment variables.")
 
 client = Groq(api_key=GROQ_API_KEY)
 
 EMBED_MODEL = "all-MiniLM-L6-v2"
 embedder = SentenceTransformer(EMBED_MODEL)
 
-# Global storage (HF free-tier friendly)
 faiss_index = None
 doc_chunks = []
 
@@ -43,7 +42,6 @@ def chunk_text(text, chunk_size=500, overlap=100):
         i += chunk_size - overlap
     return chunks
 
-
 # ================= FAISS =================
 
 def create_faiss_index(chunks):
@@ -58,14 +56,14 @@ def retrieve_context(query, k=4):
     _, indices = faiss_index.search(query_embedding, k)
     return "\n\n".join([doc_chunks[i] for i in indices[0]])
 
-
 # ================= GROQ LLM =================
 
 def ask_groq(context, question):
     prompt = f"""
 You are a helpful AI assistant.
-Answer the question strictly using the provided context.
-If the answer is not present, say "I don't know based on the document."
+Answer strictly using the provided context.
+If the answer is not present, say:
+"I don't know based on the document."
 
 Context:
 {context}
@@ -82,7 +80,6 @@ Question:
 
     return completion.choices[0].message.content
 
-
 # ================= MAIN LOGIC =================
 
 def process_pdf(pdf):
@@ -95,7 +92,7 @@ def process_pdf(pdf):
     doc_chunks = chunk_text(text)
     faiss_index = create_faiss_index(doc_chunks)
 
-    return f"✅ PDF processed successfully!\nChunks created: {len(doc_chunks)}"
+    return f"✅ PDF indexed successfully ({len(doc_chunks)} chunks)."
 
 
 def answer_question(question):
@@ -105,37 +102,69 @@ def answer_question(question):
     context = retrieve_context(question)
     return ask_groq(context, question)
 
-
-# ================= UI =================
+# ================= UI (ZINC / BLACK / GREEN) =================
 
 css = """
 body {
-    background: linear-gradient(135deg, #0F2027, #203A43, #2C5364);
+    background: linear-gradient(135deg, #09090B, #18181B);
+    color: #E4E4E7;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 h1, label {
-    color: #E5E7EB !important;
+    color: #E4E4E7 !important;
+    font-weight: 600;
 }
-textarea, input {
-    background-color: #1F2937 !important;
-    color: white !important;
-    border-radius: 10px !important;
+p {
+    color: #A1A1AA !important;
+}
+textarea, input, select {
+    background-color: #18181B !important;
+    color: #E4E4E7 !important;
+    border-radius: 12px !important;
+    border: 1px solid #27272A !important;
+    padding: 10px !important;
+}
+textarea:focus, input:focus, select:focus {
+    outline: none !important;
+    border-color: #22C55E !important;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5);
 }
 button {
-    background: linear-gradient(90deg, #6366F1, #8B5CF6) !important;
-    color: white !important;
-    font-weight: bold !important;
+    background: linear-gradient(90deg, #16A34A, #22C55E) !important;
+    color: #052E16 !important;
+    font-weight: 700 !important;
     border-radius: 14px !important;
+    padding: 12px !important;
+    border: none !important;
 }
 button:hover {
-    box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.45);
+    transform: translateY(-1px);
+}
+.gradio-container {
+    max-width: 900px;
+    margin: auto;
+}
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #09090B;
+}
+::-webkit-scrollbar-thumb {
+    background: #22C55E;
+    border-radius: 10px;
 }
 """
 
 with gr.Blocks() as demo:
-    gr.Markdown(
-        "<h1 style='text-align:center'>📄 RAG-Based PDF Chatbot</h1>"
-        "<p style='text-align:center;color:#CBD5F5'>Groq · FAISS · Gradio</p>"
-    )
+    gr.Markdown("""
+    <h1 style="text-align:center; color:#22C55E;">
+    📄 RAG-Based PDF Chatbot
+    </h1>
+    <p style="text-align:center;">
+    </p>
+    """)
 
     with gr.Group():
         pdf = gr.File(label="Upload PDF")
@@ -152,5 +181,5 @@ demo.launch(
     server_name="0.0.0.0",
     server_port=7860,
     css=css,
-    ssr_mode=False   # 🔥 HF crash-safe
+    ssr_mode=False
 )
