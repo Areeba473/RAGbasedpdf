@@ -1,0 +1,6 @@
+gradio
+groq
+faiss-cpu
+sentence-transformers
+pypdf
+numpy
